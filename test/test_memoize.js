@@ -1,10 +1,10 @@
-/*eslint-env es6, node, mocha */
+/*eslint-env mocha*/
 
 'use strict';
 
-var assert  = require('assert');
-var co      = require('co');
-var memoize = require('../');
+const assert  = require('assert');
+const co      = require('co');
+const memoize = require('../');
 
 
 describe('promise-memoize', function () {
@@ -131,7 +131,7 @@ describe('promise-memoize', function () {
   }));
 
   it('should throw on wrong resolver', function () {
-    assert.throws(function () {
+    assert.throws(() => {
       memoize(counter, { resolve: 'foo' });
     });
   });
