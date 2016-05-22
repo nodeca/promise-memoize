@@ -1,0 +1,27 @@
+{
+  "name": "promise-memoize",
+  "version": "0.1.0",
+  "description": "Memoize promise-returning functions. Includes cache expire and prefetch.",
+  "keywords": [
+    "promise",
+    "memoize",
+    "cache"
+  ],
+  "repository": "nodeca/promise-memoize",
+  "license": "MIT",
+  "files": [
+    "index.js",
+    "lib/"
+  ],
+  "scripts": {
+    "lint": "./node_modules/.bin/eslint .",
+    "test": "npm run lint && ./node_modules/.bin/mocha",
+    "coverage": "rm -rf coverage && node_modules/.bin/istanbul cover node_modules/.bin/_mocha"
+  },
+  "devDependencies": {
+    "co": "^4.6",
+    "eslint": "~2.10.2",
+    "istanbul": "^0.4.1",
+    "mocha": "^2.2.5"
+  }
+}
