@@ -16,12 +16,16 @@
   "scripts": {
     "lint": "./node_modules/.bin/eslint .",
     "test": "npm run lint && ./node_modules/.bin/mocha",
-    "coverage": "rm -rf coverage && node_modules/.bin/istanbul cover node_modules/.bin/_mocha"
+    "coverage": "rm -rf coverage && node_modules/.bin/istanbul cover node_modules/.bin/_mocha",
+    "report-coveralls": "./node_modules/.bin/istanbul cover ./node_modules/mocha/bin/_mocha --report lcovonly -- -R spec && cat ./coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js && rm -rf ./coverage"
   },
   "devDependencies": {
     "co": "^4.6",
     "eslint": "~2.10.2",
     "istanbul": "^0.4.1",
     "mocha": "^2.2.5"
+  },
+  "dependencies": {
+    "coveralls": "^2.11.9"
   }
 }
