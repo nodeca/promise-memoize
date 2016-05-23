@@ -7,7 +7,7 @@ const co      = require('co');
 const memoize = require('../');
 
 
-describe('promise-memoize', function () {
+describe('memoize', function () {
   function counter() {
     return new Promise(resolve => {
       process.nextTick(() => resolve(counter.value++));
@@ -40,6 +40,13 @@ describe('promise-memoize', function () {
     assert.equal(yield memoized(1, 2), 0, 'assert A #3');
     assert.equal(yield memoized(3, 4), 1, 'assert B #2');
     assert.equal(yield memoized(),     2, 'assert C #1');
+  }));
+
+  it('should keep different caches for differently split string as args', co.wrap(function* () {
+    let memoized = memoize(counter);
+
+    assert.equal(yield memoized('foo', 'bar'), 0, 'assert #1');
+    assert.equal(yield memoized('fo', 'obar'), 1, 'assert #2');
   }));
 
   it('should not cache errors by default', co.wrap(function* () {
@@ -90,7 +97,7 @@ describe('promise-memoize', function () {
 
     try { yield memoized(1, 2); } catch (err) { i++; assert.equal(err, 0, 'assert A #1'); }
     try { yield memoized(1, 2); } catch (err) { i++; assert.equal(err, 0, 'assert A #2'); }
-    yield sleep(15);
+    yield sleep(50);
     try { yield memoized(1, 2); } catch (err) { i++; assert.equal(err, 1, 'assert A #3'); }
     try { yield memoized(1, 2); } catch (err) { i++; assert.equal(err, 1, 'assert A #4'); }
 
@@ -114,25 +121,50 @@ describe('promise-memoize', function () {
     assert.equal(yield memoized(123), 0, 'assert #1');
     assert.equal(yield memoized(123), 0, 'assert #2');
 
+    // check that prefetch does not run after just 40 msec
     yield sleep(40);
     assert.equal(yield memoized(123), 0, 'assert #3');
     assert.equal(yield memoized(123), 0, 'assert #4');
     assert.equal(counter.value, 1);
 
-    yield sleep(40); // 80+ msec, prefetch should run here
+    // check that prefetch runs after 80 msec
+    yield sleep(40); // 80+ msec
     assert.equal(yield memoized(123), 0, 'assert #5');
     assert.equal(counter.value, 1); // still 1, 'cause updating next tick
-
     yield sleep(40); // 120+ msec
     assert.equal(counter.value, 2);
+
+    // make sure prefetched result stays in cache
     assert.equal(yield memoized(123), 1, 'assert #6');
     assert.equal(yield memoized(123), 1, 'assert #7');
     assert.equal(counter.value, 2);
   }));
 
-  it('should throw on wrong resolver', function () {
-    assert.throws(() => {
-      memoize(counter, { resolve: 'foo' });
-    });
-  });
+  it('coverage - clear after fetch (succeeded)', co.wrap(function* () {
+    let memoized = memoize(counter, { maxAge: 10 }), p;
+
+    p = memoized(123);
+    memoized.clear();
+    yield p; // check that it doesn't throw TypeError
+  }));
+
+  it('coverage - clear after fetch (errored)', co.wrap(function* () {
+    let memoized = memoize(rejecter, { maxErrorAge: 10 }), p;
+
+    p = memoized(123);
+    memoized.clear();
+
+    // check that it doesn't throw TypeError
+    try { yield p; } catch (err) { assert.equal(err, 0, 'assert #1'); }
+  }));
+
+  it('coverage - clear after fetch (prefetch)', co.wrap(function* () {
+    let memoized = memoize(counter, { maxAge: 50 }), p;
+
+    yield memoized(123);
+    yield sleep(40);
+    p = memoized(123); // prefetch here
+    memoized.clear();
+    yield p; // check that it doesn't throw TypeError
+  }));
 });
