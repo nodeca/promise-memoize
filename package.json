@@ -1,6 +1,6 @@
 {
   "name": "promise-memoize",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Memoize promise-returning functions. Includes cache expire and prefetch.",
   "keywords": [
     "promise",
