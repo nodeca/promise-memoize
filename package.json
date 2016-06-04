@@ -21,11 +21,9 @@
   },
   "devDependencies": {
     "co": "^4.6",
-    "eslint": "~2.10.2",
-    "istanbul": "^0.4.1",
-    "mocha": "^2.2.5"
-  },
-  "dependencies": {
-    "coveralls": "^2.11.9"
+    "coveralls": "^2.11.9",
+    "eslint": "~2.11.1",
+    "istanbul": "^0.4.3",
+    "mocha": "^2.5.3"
   }
 }
