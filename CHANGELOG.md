@@ -1,3 +1,9 @@
+1.0.0 / 2016-06-04
+==================
+
+- Maintenance release: version bump & deps cleanup.
+
+
 0.1.1 / 2016-05-23
 ==================
 
