@@ -2,6 +2,10 @@
 
 'use strict';
 
+if (typeof Promise === 'undefined') {
+  global.Promise = require('any-promise');
+}
+
 const assert  = require('assert');
 const co      = require('co');
 const memoize = require('../');
