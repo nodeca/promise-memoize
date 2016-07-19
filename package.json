@@ -11,19 +11,38 @@
   "license": "MIT",
   "files": [
     "index.js",
-    "lib/"
+    "lib/",
+    "es5/index.js",
+    "es5/lib/"
   ],
   "scripts": {
-    "lint": "eslint .",
-    "test": "npm run lint && mocha",
+    "build-es5": "rm -r es5 > /dev/null; babel -s true ./index.js ./lib/**/*.js -d es5 && babel -s true --plugins transform-regenerator ./test/**/*.js -d es5",
+    "prepublish": "npm run build-es5",
+    "lint": "eslint ./index.js ./{lib,test}/**/*.js",
+    "pretest": "npm run lint",
+    "test": "[ `echo $npm_config_node_version | cut -d. -f1` -eq 0 ] && npm run test-es5 || mocha",
+    "test-es5": "mocha --require regenerator-runtime/runtime --require any-promise/register/bluebird es5/test/**/*.js",
     "coverage": "rm -rf coverage && istanbul cover _mocha",
     "report-coveralls": "istanbul cover _mocha --report lcovonly -- -R spec && cat ./coverage/lcov.info | coveralls && rm -rf ./coverage"
   },
   "devDependencies": {
+    "any-promise": "^1.3.0",
+    "babel-cli": "^6.10.1",
+    "babel-plugin-transform-es2015-arrow-functions": "^6.8.0",
+    "babel-plugin-transform-es2015-block-scoping": "^6.10.1",
+    "babel-plugin-transform-regenerator": "^6.9.0",
+    "bluebird": "^3.4.1",
     "co": "^4.6",
     "coveralls": "^2.11.9",
     "eslint": "~2.11.1",
     "istanbul": "^0.4.3",
-    "mocha": "^2.5.3"
+    "mocha": "^2.5.3",
+    "regenerator-runtime": "^0.9.5"
+  },
+  "babel": {
+    "plugins": [
+      "transform-es2015-arrow-functions",
+      "transform-es2015-block-scoping"
+    ]
   }
 }
