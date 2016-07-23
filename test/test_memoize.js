@@ -2,27 +2,30 @@
 
 'use strict';
 
-const assert  = require('assert');
-const co      = require('co');
-const memoize = require('../');
+var memoize = require('../');
+var Promise = require('any-promise');
+var chai    = require('chai');
 
+chai.use(require('chai-as-promised'));
+
+var assert = chai.assert;
 
 describe('memoize', function () {
   function counter() {
-    return new Promise(resolve => {
-      process.nextTick(() => resolve(counter.value++));
+    return new Promise(function (resolve) {
+      process.nextTick(function () { resolve(counter.value++); });
     });
   }
 
   function rejecter() {
-    return new Promise((resolve, reject) => {
-      process.nextTick(() => reject(rejecter.value++));
+    return new Promise(function (resolve, reject) {
+      process.nextTick(function () { reject(rejecter.value++); });
     });
   }
 
   function sleep(ms) {
-    return new Promise(resolve => {
-      setTimeout(() => resolve(), ms);
+    return new Promise(function (resolve) {
+      setTimeout(function () { resolve(); }, ms);
     });
   }
 
@@ -31,140 +34,276 @@ describe('memoize', function () {
     rejecter.value = 0;
   });
 
-  it('should memoize functions', co.wrap(function* () {
-    let memoized = memoize(counter);
+  it('should memoize functions', function () {
+    var memoized = memoize(counter);
 
-    assert.equal(yield memoized(1, 2), 0, 'assert A #1');
-    assert.equal(yield memoized(1, 2), 0, 'assert A #2');
-    assert.equal(yield memoized(3, 4), 1, 'assert B #1');
-    assert.equal(yield memoized(1, 2), 0, 'assert A #3');
-    assert.equal(yield memoized(3, 4), 1, 'assert B #2');
-    assert.equal(yield memoized(),     2, 'assert C #1');
-  }));
+    return Promise.resolve()
+      .then(function () {
+        return assert.becomes(memoized(1, 2), 0, 'assert A #1');
+      })
+      .then(function () {
+        return assert.becomes(memoized(1, 2), 0, 'assert A #2');
+      })
+      .then(function () {
+        return assert.becomes(memoized(3, 4), 1, 'assert B #1');
+      })
+      .then(function () {
+        return assert.becomes(memoized(1, 2), 0, 'assert A #3');
+      })
+      .then(function () {
+        return assert.becomes(memoized(3, 4), 1, 'assert B #2');
+      })
+      .then(function () {
+        return assert.becomes(memoized(),     2, 'assert C #1');
+      });
+  });
 
-  it('should keep different caches for differently split string as args', co.wrap(function* () {
-    let memoized = memoize(counter);
+  it('should keep different caches for differently split string as args', function () {
+    var memoized = memoize(counter);
 
-    assert.equal(yield memoized('foo', 'bar'), 0, 'assert #1');
-    assert.equal(yield memoized('fo', 'obar'), 1, 'assert #2');
-  }));
+    return Promise.resolve()
+      .then(function () {
+        return assert.becomes(memoized('foo', 'bar'), 0, 'assert #1');
+      })
+      .then(function () {
+        return assert.becomes(memoized('fo', 'obar'), 1, 'assert #2');
+      });
+  });
 
-  it('should not cache errors by default', co.wrap(function* () {
-    let memoized = memoize(rejecter);
-    let i = 0;
+  it('should not cache errors by default', function () {
+    var memoized = memoize(rejecter);
+    var i = 0;
 
-    try { yield memoized(1, 2); } catch (err) { i++; assert.equal(err, 0, 'assert A #1'); }
-    try { yield memoized(1, 2); } catch (err) { i++; assert.equal(err, 1, 'assert A #3'); }
+    return Promise.resolve()
+      .then(function () {
+        return memoized(1, 2).catch(function (err) {
+          i++;
+          assert.equal(err, 0, 'assert A #1');
+        });
+      })
+      .then(function () {
+        return memoized(1, 2).catch(function (err) {
+          i++;
+          assert.equal(err, 1, 'assert A #2');
+        });
+      })
+      .then(function () {
+        assert.equal(i, 2);
+      });
+  });
 
-    assert.equal(i, 2);
-  }));
+  it('should accept complex arguments', function () {
+    var memoized = memoize(counter, { resolve: 'json' });
 
-  it('should accept complex arguments', co.wrap(function* () {
-    let memoized = memoize(counter, { resolve: 'json' });
+    return Promise.resolve()
+      .then(function () {
+        return assert.becomes(memoized({ x: 1 }, [ 'foo' ]), 0, 'assert A #1');
+      })
+      .then(function () {
+        return assert.becomes(memoized({ x: 1 }, [ 'foo' ]), 0, 'assert A #2');
+      })
+      .then(function () {
+        return assert.becomes(memoized({ x: 2 }, [ 'foo' ]), 1, 'assert B #1');
+      })
+      .then(function () {
+        return assert.becomes(memoized({ x: 1 }, [ 'bar' ]), 2, 'assert C #1');
+      })
+      .then(function () {
+        return assert.becomes(memoized({ x: 1 }, [ 'foo' ]), 0, 'assert A #3');
+      })
+      .then(function () {
+        return assert.becomes(memoized({ x: 2 }, [ 'foo' ]), 1, 'assert B #2');
+      });
+  });
 
-    assert.equal(yield memoized({ x: 1 }, [ 'foo' ]), 0, 'assert A #1');
-    assert.equal(yield memoized({ x: 1 }, [ 'foo' ]), 0, 'assert A #2');
-    assert.equal(yield memoized({ x: 2 }, [ 'foo' ]), 1, 'assert B #1');
-    assert.equal(yield memoized({ x: 1 }, [ 'bar' ]), 2, 'assert C #1');
-    assert.equal(yield memoized({ x: 1 }, [ 'foo' ]), 0, 'assert A #3');
-    assert.equal(yield memoized({ x: 2 }, [ 'foo' ]), 1, 'assert B #2');
-  }));
+  it('should be reset on .clear()', function () {
+    var memoized = memoize(counter);
 
-  it('should be reset on .clear()', co.wrap(function* () {
-    let memoized = memoize(counter);
+    return Promise.resolve()
+      .then(function () {
+        return assert.becomes(memoized(1, 2), 0, 'assert A #1');
+      })
+      .then(function () {
+        return assert.becomes(memoized(1, 2), 0, 'assert A #2');
+      })
+      .then(function () {
+        memoized.clear();
+        return assert.becomes(memoized(1, 2), 1, 'assert A #3');
+      });
+  });
 
-    assert.equal(yield memoized(1, 2), 0, 'assert A #1');
-    assert.equal(yield memoized(1, 2), 0, 'assert A #2');
-    memoized.clear();
-    assert.equal(yield memoized(1, 2), 1, 'assert A #3');
-  }));
+  it('should respect maxAge', function () {
+    var memoized = memoize(counter, { maxAge: 10 });
 
-  it('should respect maxAge', co.wrap(function* () {
-    let memoized = memoize(counter, { maxAge: 10 });
+    return Promise.resolve()
+      .then(function () {
+        return assert.becomes(memoized(123), 0, 'assert A #1');
+      })
+      .then(function () {
+        return assert.becomes(memoized(123), 0, 'assert A #2');
+      })
+      .then(function () {
+        return sleep(50);
+      })
+      .then(function () {
+        assert.equal(memoized.clear(), 0); // cache should expire
+      })
+      .then(function () {
+        return assert.becomes(memoized(123), 1, 'assert A #3');
+      })
+      .then(function () {
+        return assert.becomes(memoized(123), 1, 'assert A #4');
+      })
+      .then(function () {
+        assert.equal(memoized.clear(), 1); // cache should be dirty
+      });
+  });
 
-    assert.equal(yield memoized(123), 0, 'assert A #1');
-    assert.equal(yield memoized(123), 0, 'assert A #2');
-    yield sleep(50);
-    assert.equal(memoized.clear(), 0); // cache should expire
-    assert.equal(yield memoized(123), 1, 'assert A #3');
-    assert.equal(yield memoized(123), 1, 'assert A #4');
-    assert.equal(memoized.clear(), 1); // cache should be dirty
-  }));
+  it('should respect maxErrorAge', function () {
+    var memoized = memoize(rejecter, { maxErrorAge: 10 });
+    var i = 0;
 
-  it('should respect maxErrorAge', co.wrap(function* () {
-    let memoized = memoize(rejecter, { maxErrorAge: 10 });
-    let i = 0;
+    return Promise.resolve()
+      .then(function () {
+        return memoized(1, 2).catch(function (err) {
+          i++;
+          assert.equal(err, 0, 'assert A #1');
+        });
+      })
+      .then(function () {
+        return memoized(1, 2).catch(function (err) {
+          i++;
+          assert.equal(err, 0, 'assert A #2');
+        });
+      })
+      .then(function () {
+        return sleep(50);
+      })
+      .then(function () {
+        return memoized(1, 2).catch(function (err) {
+          i++;
+          assert.equal(err, 1, 'assert A #3');
+        });
+      })
+      .then(function () {
+        return memoized(1, 2).catch(function (err) {
+          i++;
+          assert.equal(err, 1, 'assert A #4');
+        });
+      })
+      .then(function () {
+        assert.equal(i, 4);
+      });
+  });
 
-    try { yield memoized(1, 2); } catch (err) { i++; assert.equal(err, 0, 'assert A #1'); }
-    try { yield memoized(1, 2); } catch (err) { i++; assert.equal(err, 0, 'assert A #2'); }
-    yield sleep(50);
-    try { yield memoized(1, 2); } catch (err) { i++; assert.equal(err, 1, 'assert A #3'); }
-    try { yield memoized(1, 2); } catch (err) { i++; assert.equal(err, 1, 'assert A #4'); }
-
-    assert.equal(i, 4);
-  }));
-
-  it('should accept resolve function', co.wrap(function* () {
-    let memoized = memoize(counter, {
-      resolve: args => args[0].x + args[1][0]
+  it('should accept resolve function', function () {
+    var memoized = memoize(counter, {
+      resolve: function (args) { return args[0].x + args[1][0]; }
     });
 
-    assert.equal(yield memoized({ x: 1 }, [ 1, 2, 3 ]), 0, 'assert A #1');
-    assert.equal(yield memoized({ x: 2 }, [ 1, 2, 3 ]), 1, 'assert B #1');
-    assert.equal(yield memoized({ x: 1 }, [ 2, 2, 3 ]), 1, 'assert C #1');
-    assert.equal(yield memoized({ x: 1 }, [ 1, 4, 5 ]), 0, 'assert A #2');
-  }));
+    return Promise.resolve()
+      .then(function () {
+        return assert.becomes(memoized({ x: 1 }, [ 1, 2, 3 ]), 0, 'assert A #1');
+      })
+      .then(function () {
+        return assert.becomes(memoized({ x: 2 }, [ 1, 2, 3 ]), 1, 'assert B #1');
+      })
+      .then(function () {
+        return assert.becomes(memoized({ x: 1 }, [ 2, 2, 3 ]), 1, 'assert C #1');
+      })
+      .then(function () {
+        return assert.becomes(memoized({ x: 1 }, [ 1, 4, 5 ]), 0, 'assert A #2');
+      });
+  });
 
-  it('should run prefetch', co.wrap(function* () {
-    let memoized = memoize(counter, { maxAge: 100 });
+  it('should run prefetch', function () {
+    var memoized = memoize(counter, { maxAge: 100 });
 
-    assert.equal(yield memoized(123), 0, 'assert #1');
-    assert.equal(yield memoized(123), 0, 'assert #2');
+    return Promise.resolve()
+      .then(function () {
+        return assert.becomes(memoized(123), 0, 'assert #1');
+      })
+      .then(function () {
+        return assert.becomes(memoized(123), 0, 'assert #2');
+      })
 
-    // check that prefetch does not run after just 40 msec
-    yield sleep(40);
-    assert.equal(yield memoized(123), 0, 'assert #3');
-    assert.equal(yield memoized(123), 0, 'assert #4');
-    assert.equal(counter.value, 1);
+      // check that prefetch does not run after just 40 msec
+      .then(function () {
+        return sleep(40);
+      })
+      .then(function () {
+        return assert.becomes(memoized(123), 0, 'assert #3');
+      })
+      .then(function () {
+        return assert.becomes(memoized(123), 0, 'assert #4');
+      })
+      .then(function () {
+        assert.equal(counter.value, 1);
+      })
 
-    // check that prefetch runs after 80 msec
-    yield sleep(40); // 80+ msec
-    assert.equal(yield memoized(123), 0, 'assert #5');
-    assert.equal(counter.value, 1); // still 1, 'cause updating next tick
-    yield sleep(40); // 120+ msec
-    assert.equal(counter.value, 2);
+      // check that prefetch runs after 80 msec
+      .then(function () {
+        return sleep(40); // 80+ msec
+      })
+      .then(function () {
+        return assert.becomes(memoized(123), 0, 'assert #5');
+      })
+      .then(function () {
+        assert.equal(counter.value, 1); // still 1, 'cause updating next tick
+      })
+      .then(function () {
+        return sleep(40); // 120+ msec
+      })
+      .then(function () {
+        assert.equal(counter.value, 2);
+      })
 
-    // make sure prefetched result stays in cache
-    assert.equal(yield memoized(123), 1, 'assert #6');
-    assert.equal(yield memoized(123), 1, 'assert #7');
-    assert.equal(counter.value, 2);
-  }));
+      // make sure prefetched result stays in cache
+      .then(function () {
+        return assert.becomes(memoized(123), 1, 'assert #6');
+      })
+      .then(function () {
+        return assert.becomes(memoized(123), 1, 'assert #7');
+      })
+      .then(function () {
+        assert.equal(counter.value, 2);
+      });
+  });
 
-  it('coverage - clear after fetch (succeeded)', co.wrap(function* () {
-    let memoized = memoize(counter, { maxAge: 10 }), p;
+  it('coverage - clear after fetch (succeeded)', function () {
+    var memoized = memoize(counter, { maxAge: 10 }), p;
 
     p = memoized(123);
     memoized.clear();
-    yield p; // check that it doesn't throw TypeError
-  }));
+    return p; // check that it doesn't throw TypeError
+  });
 
-  it('coverage - clear after fetch (errored)', co.wrap(function* () {
-    let memoized = memoize(rejecter, { maxErrorAge: 10 }), p;
+  it('coverage - clear after fetch (errored)', function () {
+    var memoized = memoize(rejecter, { maxErrorAge: 10 }), p;
 
     p = memoized(123);
     memoized.clear();
 
     // check that it doesn't throw TypeError
-    try { yield p; } catch (err) { assert.equal(err, 0, 'assert #1'); }
-  }));
+    return p.catch(function (err) {
+      assert.equal(err, 0, 'assert #1');
+    });
+  });
 
-  it('coverage - clear after fetch (prefetch)', co.wrap(function* () {
-    let memoized = memoize(counter, { maxAge: 50 }), p;
+  it('coverage - clear after fetch (prefetch)', function () {
+    var memoized = memoize(counter, { maxAge: 50 }), p;
 
-    yield memoized(123);
-    yield sleep(40);
-    p = memoized(123); // prefetch here
-    memoized.clear();
-    yield p; // check that it doesn't throw TypeError
-  }));
+    return Promise.resolve()
+      .then(function () {
+        return memoized(123);
+      })
+      .then(function () {
+        return sleep(40);
+      })
+      .then(function () {
+        p = memoized(123); // prefetch here
+        memoized.clear();
+        return p; // check that it doesn't throw TypeError
+      });
+  });
 });

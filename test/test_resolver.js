@@ -2,8 +2,8 @@
 
 'use strict';
 
-const assert   = require('assert');
-const resolver = require('../lib/resolver');
+var assert   = require('assert');
+var resolver = require('../lib/resolver');
 
 
 describe('resolver', function () {
@@ -36,17 +36,19 @@ describe('resolver', function () {
   });
 
   it('flex, custom #2', function () {
-    assert.equal(resolver([ obj => obj.x ])([ { x: 'test' } ]), 'test');
+    function x_prop(obj) { return obj.x; }
+
+    assert.equal(resolver([ x_prop ])([ { x: 'test' } ]), 'test');
   });
 
   it('invalid', function () {
-    assert.throws(() => {
+    assert.throws(function () {
       resolver('foo');
     }, /invalid resolve option/);
   });
 
   it('invalid flex', function () {
-    assert.throws(() => {
+    assert.throws(function () {
       resolver([ 'foo' ]);
     }, /unknown value .* in resolve option/);
   });
