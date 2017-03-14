@@ -20,6 +20,9 @@
 npm install promise-memoize --save
 ```
 
+(\*) IE9 and below will require [setTimeout polyfill](https://developer.mozilla.org/docs/Web/API/WindowTimers/setTimeout)
+for correct work.
+
 
 ## Usage example
 
