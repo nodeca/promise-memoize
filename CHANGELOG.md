@@ -1,3 +1,9 @@
+1.2.0 / 2017-03-17
+------------------
+
+- Code optimization. Unwrapped all closures to static functions.
+
+
 1.1.0 / 2016-07-23
 ------------------
 
