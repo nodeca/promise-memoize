@@ -1,3 +1,10 @@
+1.2.1 / 2017-10-14
+------------------
+
+- More safeguards to avoid races on cache change, #6.
+- Devdeps bump.
+
+
 1.2.0 / 2017-03-17
 ------------------
 
